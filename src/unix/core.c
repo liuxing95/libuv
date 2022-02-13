@@ -333,7 +333,11 @@ int uv_backend_fd(const uv_loop_t* loop) {
   return loop->backend_fd;
 }
 
-
+// 判断 loop alive 返回 int类型
+// 1. 是否有活跃的句柄
+// 2. 是否有活跃的请求
+// 3. loop的 pending_queue 是否为空
+// 4. loop 的 关闭句柄是否存在
 static int uv__loop_alive(const uv_loop_t* loop) {
   return uv__has_active_handles(loop) ||
          uv__has_active_reqs(loop) ||
@@ -366,18 +370,24 @@ int uv_loop_alive(const uv_loop_t* loop) {
   return uv__loop_alive(loop);
 }
 
-
+// libuv 内部的主要实现逻辑
+// loop 结构体指针
+// uv_loop_t 结构体定义
 int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   int timeout;
   int r;
   int ran_pending;
-
+  
+  // 判断 uv_loop alive ？
+  // true 继续运行 false end
   r = uv__loop_alive(loop);
   if (!r)
+    // uv__update_time 作用就是在循环开头阶段、使用当前时间设置属性 loop->time
     uv__update_time(loop);
 
   while (r != 0 && loop->stop_flag == 0) {
     uv__update_time(loop);
+    // 处理 timer 队列
     uv__run_timers(loop);
     ran_pending = uv__run_pending(loop);
     uv__run_idle(loop);
